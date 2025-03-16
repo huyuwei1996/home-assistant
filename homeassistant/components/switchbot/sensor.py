@@ -128,11 +128,18 @@ class SwitchBotSensor(SwitchbotEntity, SensorEntity):
         self._sensor = sensor
         self._attr_unique_id = f"{coordinator.base_unique_id}-{sensor}"
         self.entity_description = SENSOR_TYPES[sensor]
+        self._rename_hub2_temperature_entity(sensor)
 
     @property
     def native_value(self) -> str | int | None:
         """Return the state of the sensor."""
         return self.parsed_data[self._sensor]
+
+    def _rename_hub2_temperature_entity(self, sensor: str) -> None:
+        """Register the temperature entity for the Wohub2 model."""
+        if self.coordinator.model.lower() == "wohub2" and sensor == "temperature":
+            # self._attr_name = "Temperature"
+            self._attr_origin_name = "temperature"
 
 
 class SwitchbotRSSISensor(SwitchBotSensor):
