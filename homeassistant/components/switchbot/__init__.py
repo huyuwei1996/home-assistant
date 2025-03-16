@@ -13,10 +13,11 @@ from homeassistant.const import (
     CONF_PASSWORD,
     CONF_SENSOR_TYPE,
     Platform,
+    UnitOfTemperature,
 )
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
-from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import device_registry as dr, entity_registry as er
 
 from .const import (
     CONF_ENCRYPTION_KEY,
@@ -26,6 +27,7 @@ from .const import (
     DEFAULT_RETRY_COUNT,
     ENCRYPTED_MODELS,
     HASS_SENSOR_TYPE_TO_SWITCHBOT_MODEL,
+    SENSOR_SUB_TEMPERATURE_SWITCHBOT_MODELS,
     SupportedModels,
 )
 from .coordinator import SwitchbotConfigEntry, SwitchbotDataUpdateCoordinator
@@ -176,3 +178,69 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     return await hass.config_entries.async_unload_platforms(
         entry, PLATFORMS_BY_TYPE[sensor_type]
     )
+
+
+async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
+    """Migrate old entry."""
+    _LOGGER.debug(
+        "Migrating configuration from version %s.%s",
+        config_entry.version,
+        config_entry.minor_version,
+    )
+
+    if config_entry.version == 1 and config_entry.minor_version < 2:
+        return await _migrate_hub2_temperature_entities(hass, config_entry)
+
+    return True
+
+
+async def _migrate_hub2_temperature_entities(
+    hass: HomeAssistant, config_entry: ConfigEntry
+) -> bool:
+    """Migrate temperature entities for Hub 2 models."""
+    sensor_type = config_entry.data.get(CONF_SENSOR_TYPE)
+    if sensor_type not in SENSOR_SUB_TEMPERATURE_SWITCHBOT_MODELS:
+        return True
+
+    if not config_entry.unique_id:
+        return False
+
+    entity_registry = er.async_get(hass)
+
+    # Find and migrate sensor entities for this config entry
+    entities_to_migrate = [
+        entity_entry
+        for entity_entry in er.async_entries_for_config_entry(
+            entity_registry, config_entry.entry_id
+        )
+        if (
+            entity_entry.domain == "sensor"
+            and not entity_entry.original_name
+            and not entity_entry.entity_id.endswith("_temperature")
+        )
+    ]
+
+    for entity_entry in entities_to_migrate:
+        old_entity_id = entity_entry.entity_id
+        new_entity_id = f"{old_entity_id}_temperature"
+
+        _LOGGER.warning(
+            "Migrating Hub 2 temperature entity from %s to %s",
+            old_entity_id,
+            new_entity_id,
+        )
+
+        entity_registry.async_update_entity(
+            old_entity_id,
+            new_entity_id=new_entity_id,
+            original_name="temperature",
+            unit_of_measurement=UnitOfTemperature.CELSIUS,
+        )
+    hass.config_entries.async_update_entry(config_entry, version=1, minor_version=2)
+
+    _LOGGER.debug(
+        "Migration to version %s.%s successful",
+        config_entry.version,
+        config_entry.minor_version,
+    )
+    return True

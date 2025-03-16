@@ -74,6 +74,7 @@ class SwitchbotConfigFlow(ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Switchbot."""
 
     VERSION = 1
+    MINOR_VERSION = 2
 
     @staticmethod
     @callback

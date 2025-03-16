@@ -84,6 +84,10 @@ ENCRYPTED_SWITCHBOT_MODEL_TO_CLASS: dict[
     SwitchbotModel.RELAY_SWITCH_1: switchbot.SwitchbotRelaySwitch,
 }
 
+SENSOR_SUB_TEMPERATURE_SWITCHBOT_MODELS = {
+    SupportedModels.HUB2,
+}
+
 HASS_SENSOR_TYPE_TO_SWITCHBOT_MODEL = {
     str(v): k for k, v in SUPPORTED_MODEL_TYPES.items()
 }
