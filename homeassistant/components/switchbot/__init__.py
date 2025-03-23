@@ -13,7 +13,6 @@ from homeassistant.const import (
     CONF_PASSWORD,
     CONF_SENSOR_TYPE,
     Platform,
-    UnitOfTemperature,
 )
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
@@ -27,7 +26,6 @@ from .const import (
     DEFAULT_RETRY_COUNT,
     ENCRYPTED_MODELS,
     HASS_SENSOR_TYPE_TO_SWITCHBOT_MODEL,
-    SENSOR_SUB_TEMPERATURE_SWITCHBOT_MODELS,
     SupportedModels,
 )
 from .coordinator import SwitchbotConfigEntry, SwitchbotDataUpdateCoordinator
@@ -189,19 +187,15 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) ->
     )
 
     if config_entry.version == 1 and config_entry.minor_version < 2:
-        return await _migrate_hub2_temperature_entities(hass, config_entry)
+        return await _migrate_temperature_entities(hass, config_entry)
 
     return True
 
 
-async def _migrate_hub2_temperature_entities(
+async def _migrate_temperature_entities(
     hass: HomeAssistant, config_entry: ConfigEntry
 ) -> bool:
-    """Migrate temperature entities for Hub 2 models."""
-    sensor_type = config_entry.data.get(CONF_SENSOR_TYPE)
-    if sensor_type not in SENSOR_SUB_TEMPERATURE_SWITCHBOT_MODELS:
-        return True
-
+    """Migrate temperature entities."""
     if not config_entry.unique_id:
         return False
 
@@ -225,7 +219,7 @@ async def _migrate_hub2_temperature_entities(
         new_entity_id = f"{old_entity_id}_temperature"
 
         _LOGGER.warning(
-            "Migrating Hub 2 temperature entity from %s to %s",
+            "Migrating temperature entity from %s to %s",
             old_entity_id,
             new_entity_id,
         )
@@ -233,8 +227,6 @@ async def _migrate_hub2_temperature_entities(
         entity_registry.async_update_entity(
             old_entity_id,
             new_entity_id=new_entity_id,
-            original_name="temperature",
-            unit_of_measurement=UnitOfTemperature.CELSIUS,
         )
     hass.config_entries.async_update_entry(config_entry, version=1, minor_version=2)
 
